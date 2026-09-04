@@ -2,6 +2,8 @@
 
 精选 **158 个**优质 VS Code 扩展的推荐看板，数据来自 Visual Studio Marketplace 官方 API **实时查询**，支持自动刷新、分类筛选、搜索与排序。
 
+线上地址：<https://vscode.zxclaw.top>（NAS Docker + Cloudflare Tunnel）
+
 ![新锐精选板块](gui-test-screenshots/t11_new_category.png)
 
 ## 快速开始
@@ -44,6 +46,16 @@ server.py    静态服务 + API 代理
 ```
 
 `id` 为市场唯一标识（市场页面 URL 中 `itemName=` 的部分），`cat` 取自 `CATEGORIES`。
+
+## NAS 部署（Docker）
+
+```bash
+git clone https://github.com/XiaoZ-0218/vscode-extension-board.git
+cd vscode-extension-board
+docker compose up -d        # 镜像走 docker.1ms.run 加速，见 compose.yml
+```
+
+更新：`git pull && docker compose restart`。容器内以 `HOST=0.0.0.0` 监听 8137；对外经 Cloudflare Tunnel（UG NAS） ingress `vscode.zxclaw.top → http://localhost:8137`。
 
 ## 为什么需要 server.py 的代理
 
