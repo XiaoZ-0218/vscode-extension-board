@@ -1,0 +1,14 @@
+# NAS 部署：仓库根目录直接 compose up -d，更新用 git pull && docker compose restart
+services:
+  board:
+    image: docker.1ms.run/python:3.12-alpine   # 走镜像加速；网络通畅可换成 python:3.12-alpine
+    container_name: vscode-board
+    working_dir: /app
+    volumes:
+      - .:/app:ro
+    environment:
+      HOST: 0.0.0.0
+    command: ["python3", "server.py", "8137"]
+    ports:
+      - "8137:8137"
+    restart: unless-stopped

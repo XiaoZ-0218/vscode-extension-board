@@ -5,9 +5,10 @@
 1. 为请求换上常规浏览器 UA —— 市场 WAF 会拦截含 Electron 等字样的 UA（403）；
 2. 同源调用，浏览器端无需关心跨域。
 
-用法：python3 server.py [端口]   （默认 8137）
+用法：python3 server.py [端口]   （默认 8137；容器部署时设 HOST=0.0.0.0）
 """
 import json
+import os
 import sys
 import urllib.request
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -47,5 +48,6 @@ class Handler(SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8137
-    print(f"看板已启动 → http://127.0.0.1:{port}  （Ctrl+C 停止）")
-    ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
+    host = os.environ.get("HOST", "127.0.0.1")
+    print(f"看板已启动 → http://{host}:{port}  （Ctrl+C 停止）")
+    ThreadingHTTPServer((host, port), Handler).serve_forever()
