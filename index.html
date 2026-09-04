@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VS Code 扩展看板</title>
+  <meta name="description" content="精选 VS Code 扩展推荐，实时市场数据，自动刷新">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230078d4'/%3E%3Cpath d='M23 8l-9 8 9 8M14 16L8 9v14' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-logo" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="30" height="30"><rect width="32" height="32" rx="7" fill="#0078d4"/><path d="M23 8l-9 8 9 8M14 16L8 9v14" stroke="white" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <div>
+          <h1>VS Code 扩展看板</h1>
+          <p class="tagline">精选优质扩展 · 官方市场实时数据</p>
+        </div>
+      </div>
+      <div class="refresh-panel">
+        <div class="live-badge" id="liveBadge"><span class="live-dot"></span>实时数据</div>
+        <div class="refresh-meta">
+          <span id="lastUpdated">加载中…</span>
+          <span class="sep">·</span>
+          <span id="countdown">—</span>
+        </div>
+        <label class="interval-picker">
+          刷新间隔
+          <select id="intervalSelect">
+            <option value="60">1 分钟</option>
+            <option value="180">3 分钟</option>
+            <option value="300" selected>5 分钟</option>
+            <option value="600">10 分钟</option>
+            <option value="1800">30 分钟</option>
+          </select>
+        </label>
+        <button id="refreshBtn" class="refresh-btn" title="立即刷新">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
+          刷新
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="toolbar" id="toolbar">
+    <div class="toolbar-inner">
+      <div class="chips" id="chips" role="tablist"></div>
+      <div class="toolbar-right">
+        <button id="surpriseBtn" class="surprise-btn" title="随机抽 3 个不走寻常路的宝藏扩展">🎲 惊喜三连</button>
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input type="search" id="searchInput" placeholder="搜索扩展 / 推荐理由…  ( / 快速聚焦)" autocomplete="off">
+        </div>
+        <select id="sortSelect" class="sort-select" title="排序方式">
+          <option value="installs">按安装量</option>
+          <option value="rating">按评分</option>
+          <option value="updated">按最近更新</option>
+          <option value="name">按名称</option>
+        </select>
+      </div>
+    </div>
+  </nav>
+
+  <main class="board">
+    <p class="result-line" id="resultLine"></p>
+    <div class="grid" id="grid"></div>
+    <div class="empty-state" id="emptyState" hidden>
+      <span class="empty-emoji">🔍</span>
+      <p>没有匹配的扩展</p>
+      <button class="ghost-btn" id="clearFilterBtn">清除筛选条件</button>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>数据来源：<a href="https://marketplace.visualstudio.com/vscode" target="_blank" rel="noopener">Visual Studio Marketplace</a>（官方 API 实时查询） · 页面后台标签页自动暂停刷新</p>
+  </footer>
+
+  <div class="modal-overlay" id="surpriseModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="随机扩展推荐">
+      <div class="modal-head">
+        <h2>🎁 惊喜三连</h2>
+        <button class="modal-close" id="surpriseClose" title="关闭 (Esc)">✕</button>
+      </div>
+      <p class="modal-sub">不走寻常路的宝藏扩展，随机 3 枚 · 绝不出现老生常谈</p>
+      <div class="modal-grid" id="surpriseGrid"></div>
+      <div class="modal-foot">
+        <button class="reroll-btn" id="rerollBtn">🎲 再掷一次</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <noscript><p style="text-align:center;padding:2rem">此看板需要启用 JavaScript。</p></noscript>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
