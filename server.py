@@ -10,6 +10,7 @@
 import json
 import os
 import sys
+import time
 import urllib.request
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
@@ -31,8 +32,17 @@ class Handler(SimpleHTTPRequestHandler):
                 "Accept": "application/json;api-version=7.1-preview.1",
                 "User-Agent": USER_AGENT,
             })
-            with urllib.request.urlopen(req, timeout=20) as resp:
-                payload = resp.read()
+            exc = None
+            for attempt in range(3):  # 上游偶尔秒拒（RST），短重试兜住
+                try:
+                    with urllib.request.urlopen(req, timeout=20) as resp:
+                        payload = resp.read()
+                    break
+                except Exception as e:
+                    exc = e
+                    time.sleep(0.4 * (attempt + 1))
+            else:
+                raise exc
             status, ctype = 200, "application/json; charset=utf-8"
         except Exception as exc:
             payload, status, ctype = json.dumps({"error": str(exc)}).encode(), 502, "application/json"

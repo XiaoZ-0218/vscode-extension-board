@@ -18,7 +18,7 @@
   --mono: "SF Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 html { scroll-behavior: smooth; }
 
@@ -30,6 +30,9 @@ body {
     var(--bg);
   color: var(--text);
   min-height: 100vh;
+  /* 全面屏横屏时避开刘海/圆角 */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 ::selection { background: rgba(0, 152, 255, .3); }
@@ -569,10 +572,73 @@ select:hover, select:focus { border-color: var(--border-hover); }
 
 /* ── 响应式 ───────────────────────────────── */
 @media (max-width: 720px) {
-  .site-header { padding: 20px 16px 14px; }
-  .toolbar { padding: 10px 16px; }
-  .board { padding: 14px 16px 32px; }
-  .grid { grid-template-columns: 1fr; }
-  .search-box input { width: 150px; }
-  .refresh-panel { gap: 10px; }
+  /* 头部：品牌一行、刷新面板整行 */
+  .site-header { padding: 16px 16px 12px; }
+  .header-inner { flex-direction: column; align-items: stretch; gap: 12px; }
+  .brand h1 { font-size: 19px; }
+  .tagline { font-size: 12px; }
+  .refresh-panel {
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .refresh-meta { order: 3; flex-basis: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .refresh-btn { padding: 8px 13px; }
+
+  /* 工具栏：分类横向滑动不折行，控件整行 */
+  .toolbar { padding: 8px 12px 10px; }
+  .toolbar-inner { flex-direction: column; align-items: stretch; gap: 10px; }
+  .chips {
+    width: 100%;
+    min-width: 0;             /* 兜住 WebKit 交叉轴 stretch 不夹紧的问题 */
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    -webkit-mask-image: linear-gradient(90deg, #000 93%, transparent);
+    mask-image: linear-gradient(90deg, #000 93%, transparent);
+  }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { padding: 7px 13px; }
+
+  /* grid + 定宽，绕开 WebKit 嵌套 flex 内在尺寸计算导致的横向溢出 */
+  .toolbar-right {
+    display: grid;
+    width: 100%;
+    grid-template-columns: auto 1fr;
+    grid-template-areas: "search search" "surprise sort";
+    gap: 8px;
+  }
+  .search-box { grid-area: search; min-width: 0; }
+  .search-box input { width: 0; flex: 1; min-width: 0; font-size: 16px; } /* ≥16px 防 iOS 聚焦自动放大 */
+  .surprise-btn { grid-area: surprise; justify-self: start; padding: 8px 12px; }
+  .sort-select { grid-area: sort; justify-self: end; }
+  select { font-size: 13px; padding: 7px 8px; }
+
+  .board { padding: 12px 12px 32px; }
+  .grid { grid-template-columns: minmax(0, 1fr); gap: 12px; } /* min 0：轨道不被卡片内容最小宽撑爆 */
+  .card { padding: 15px 16px 13px; }
+  /* 触控目标放大 */
+  .mini-btn { padding: 7px 12px; font-size: 12px; }
+  .cat-tag { padding: 5px 10px; }
+
+  /* 弹窗近乎全屏，底部上滑关闭区留出安全区 */
+  .modal-overlay { padding: 10px; align-items: flex-end; }
+  .modal {
+    padding: 16px 16px calc(18px + env(safe-area-inset-bottom));
+    border-radius: 16px;
+    max-height: calc(100dvh - 20px);
+  }
+  .modal-head h2 { font-size: 17px; }
+  .modal-sub { margin-bottom: 12px; }
+  .modal-close { width: 34px; height: 34px; }
+  .reroll-btn { width: 100%; padding: 12px; }
+
+  .toast { bottom: calc(20px + env(safe-area-inset-bottom)); }
+  .site-footer { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+}
+
+@media (max-width: 380px) {
+  .brand h1 { font-size: 17px; }
+  .interval-picker { display: none; } /* 小屏藏间隔选择，保留倒计时与手动刷新 */
 }
