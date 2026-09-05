@@ -578,7 +578,6 @@ select:hover, select:focus { border-color: var(--border-hover); }
     gap: 8px;
     font-size: 12px;
   }
-  .refresh-meta { order: 3; flex-basis: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .refresh-btn { padding: 8px 13px; }
 
   /* 工具栏：分类横向滑动不折行，控件整行 */
@@ -636,5 +635,4 @@ select:hover, select:focus { border-color: var(--border-hover); }
 
 @media (max-width: 380px) {
   .brand h1 { font-size: 17px; }
-  .interval-picker { display: none; } /* 小屏藏间隔选择，保留倒计时与手动刷新 */
 }
