@@ -9,11 +9,9 @@ const state = {
   category: 'all',
   query: '',
   sort: 'installs',
-  intervalSec: +(localStorage.getItem('vscb-interval') || 300),
   lastFetch: 0,
   loading: false,
   refreshTimer: null,
-  tickTimer: null,
 };
 
 const $ = sel => document.querySelector(sel);
@@ -84,7 +82,6 @@ async function fetchStats(manual = false) {
       };
     });
     state.lastFetch = Date.now();
-    $('#lastUpdated').textContent = `更新于 ${new Date().toLocaleTimeString('zh-CN', { hour12: false })}`;
     renderAll();
     if (manual) toast('数据已刷新 ✨');
     const missing = state.items.filter(i => i.missing);
@@ -92,9 +89,6 @@ async function fetchStats(manual = false) {
   } catch (err) {
     console.error(err);
     toast(`刷新失败：${err.message}，将按计划重试`, true);
-    $('#lastUpdated').textContent = state.lastFetch
-      ? `更新于 ${new Date(state.lastFetch).toLocaleTimeString('zh-CN', { hour12: false })}（本次刷新失败）`
-      : '加载失败，等待重试…';
   } finally {
     state.loading = false;
     $('#refreshBtn').classList.remove('spinning');
@@ -102,32 +96,27 @@ async function fetchStats(manual = false) {
   }
 }
 
-/* ── 自动刷新调度 ─────────────────────────── */
-function scheduleNext() {
-  clearTimeout(state.refreshTimer);
-  clearInterval(state.tickTimer);
-  if (document.hidden) return;
-  state.refreshTimer = setTimeout(() => fetchStats(), state.intervalSec * 1000);
-  state.tickTimer = setInterval(updateCountdown, 1000);
-  updateCountdown();
+/* ── 自动刷新调度：每天 02:00 定点一次 ────── */
+function next2AM(now = new Date()) {
+  const t = new Date(now);
+  t.setHours(2, 0, 0, 0);
+  if (t <= now) t.setDate(t.getDate() + 1);
+  return t.getTime();
 }
 
-function updateCountdown() {
-  const left = Math.max(0, state.lastFetch + state.intervalSec * 1000 - Date.now());
-  const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
-  $('#countdown').textContent = state.lastFetch
-    ? (m > 0 ? `${m} 分 ${s} 秒后自动刷新` : `${s} 秒后自动刷新`)
-    : '正在首次加载…';
+function scheduleNext() {
+  clearTimeout(state.refreshTimer);
+  if (document.hidden) return;
+  state.refreshTimer = setTimeout(() => fetchStats(), next2AM() - Date.now());
 }
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     clearTimeout(state.refreshTimer);
-    clearInterval(state.tickTimer);
   } else {
-    const overdue = Date.now() - state.lastFetch >= state.intervalSec * 1000;
-    if (state.lastFetch && !overdue) scheduleNext();
-    else fetchStats();
+    const lastSlot = next2AM() - 86400000;  // 最近一次 02:00
+    if (state.lastFetch && state.lastFetch >= lastSlot) scheduleNext();
+    else fetchStats();                       // 错过了就补刷
   }
 });
 
@@ -322,13 +311,6 @@ $('#sortSelect').addEventListener('change', e => { state.sort = e.target.value; 
 $('#refreshBtn').addEventListener('click', () => fetchStats(true));
 $('#clearFilterBtn').addEventListener('click', () => {
   state.category = 'all'; state.query = ''; $('#searchInput').value = ''; renderAll();
-});
-$('#intervalSelect').value = String(state.intervalSec);
-$('#intervalSelect').addEventListener('change', e => {
-  state.intervalSec = +e.target.value;
-  localStorage.setItem('vscb-interval', state.intervalSec);
-  scheduleNext();
-  toast(`已设为每 ${e.target.selectedOptions[0].textContent}自动刷新`);
 });
 document.addEventListener('keydown', e => {
   if (e.key === '/' && document.activeElement !== $('#searchInput')) { e.preventDefault(); $('#searchInput').focus(); }

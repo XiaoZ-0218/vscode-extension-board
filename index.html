@@ -22,21 +22,7 @@
       </div>
       <div class="refresh-panel">
         <div class="live-badge" id="liveBadge"><span class="live-dot"></span>实时数据</div>
-        <div class="refresh-meta">
-          <span id="lastUpdated">加载中…</span>
-          <span class="sep">·</span>
-          <span id="countdown">—</span>
-        </div>
-        <label class="interval-picker">
-          刷新间隔
-          <select id="intervalSelect">
-            <option value="60">1 分钟</option>
-            <option value="180">3 分钟</option>
-            <option value="300" selected>5 分钟</option>
-            <option value="600">10 分钟</option>
-            <option value="1800">30 分钟</option>
-          </select>
-        </label>
+        <span class="refresh-schedule">每天 02:00 自动刷新</span>
         <button id="refreshBtn" class="refresh-btn" title="立即刷新">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
           刷新
