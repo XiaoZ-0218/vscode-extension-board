@@ -99,10 +99,6 @@ body {
   50% { box-shadow: 0 0 0 5px rgba(63, 185, 80, 0); }
 }
 
-.refresh-meta .sep { margin: 0 6px; opacity: .5; }
-
-.interval-picker { display: flex; align-items: center; gap: 6px; }
-
 select {
   background: var(--bg-soft);
   color: var(--text);
