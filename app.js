@@ -51,36 +51,68 @@ async function queryMarket() {
   return { results: [{ extensions: parts.flatMap(p => p.results[0].extensions) }] };
 }
 
+// 市场返回的扩展对象 → 卡片数据（主榜单与新鲜上架共用）
+function mapExt(ext) {
+  const stat = Object.fromEntries((ext.statistics || []).map(s => [s.statisticName, s.value]));
+  const ver = ext.versions?.[0] || {};
+  const iconFile = (ver.files || []).find(f => f.assetType === 'Microsoft.VisualStudio.Services.Icons.Default');
+  const id = `${ext.publisher.publisherName}.${ext.extensionName}`;
+  return {
+    id,
+    name: ext.displayName || id,
+    publisher: ext.publisher.displayName || ext.publisher.publisherName,
+    desc: ext.shortDescription || '',
+    version: ver.version || '',
+    installs: stat.install ?? 0,
+    rating: stat.averagerating ?? 0,
+    ratingCount: stat.ratingcount ?? 0,
+    updated: ext.lastUpdated || '',
+    published: ext.publishedDate || '',
+    icon: iconFile?.source || (ver.assetUri ? `${ver.assetUri}/Microsoft.VisualStudio.Services.Icons.Default` : ''),
+  };
+}
+
+/* ── 🌱 新鲜上架：实时拉市场最近 45 天发布的新扩展 ── */
+async function fetchFresh() {
+  try {
+    const data = await postQuery({
+      filters: [{
+        criteria: [{ filterType: 8, value: 'Microsoft.VisualStudio.Code' }],
+        pageNumber: 1, pageSize: 100, sortBy: 5, sortOrder: 2, // sortBy 5 + 降序 = 按发布日期从新到旧
+      }],
+      flags: 914,
+    });
+    const known = new Set(CATALOG.map(c => c.id.toLowerCase()));
+    const cutoff = Date.now() - 45 * 864e5;
+    return (data.results?.[0]?.extensions || [])
+      .map(mapExt)
+      .filter(e => Date.parse(e.published) > cutoff && !known.has(e.id.toLowerCase()))
+      .sort((a, b) => b.installs - a.installs) // 新苗里安装量最高的浮上来
+      .slice(0, 12)
+      .map(e => ({ ...e, cat: 'fresh', note: '' }));
+  } catch {
+    return []; // 拉不到也不拖累主榜单
+  }
+}
+
 async function fetchStats(manual = false) {
   if (state.loading) return;
   state.loading = true;
   $('#refreshBtn').classList.add('spinning');
   try {
-    const data = await queryMarket();
+    const [data, fresh] = await Promise.all([queryMarket(), fetchFresh()]);
     const byId = new Map();
     for (const ext of data.results[0].extensions) {
       byId.set(`${ext.publisher.publisherName}.${ext.extensionName}`.toLowerCase(), ext);
     }
-    state.items = CATALOG.map(c => {
-      const ext = byId.get(c.id.toLowerCase());
-      if (!ext) return { ...c, missing: true, name: c.id.split('.')[1], publisher: c.id.split('.')[0] };
-      const stat = Object.fromEntries((ext.statistics || []).map(s => [s.statisticName, s.value]));
-      const ver = ext.versions?.[0] || {};
-      const iconFile = (ver.files || []).find(f => f.assetType === 'Microsoft.VisualStudio.Services.Icons.Default');
-      return {
-        ...c,
-        name: ext.displayName || c.id,
-        publisher: ext.publisher.displayName || ext.publisher.publisherName,
-        desc: ext.shortDescription || '',
-        version: ver.version || '',
-        installs: stat.install ?? 0,
-        rating: stat.averagerating ?? 0,
-        ratingCount: stat.ratingcount ?? 0,
-        updated: ext.lastUpdated || '',
-        published: ext.publishedDate || '',
-        icon: iconFile?.source || (ver.assetUri ? `${ver.assetUri}/Microsoft.VisualStudio.Services.Icons.Default` : ''),
-      };
-    });
+    state.items = [
+      ...CATALOG.map(c => {
+        const ext = byId.get(c.id.toLowerCase());
+        if (!ext) return { ...c, missing: true, name: c.id.split('.')[1], publisher: c.id.split('.')[0] };
+        return { ...c, ...mapExt(ext) };
+      }),
+      ...fresh,
+    ];
     state.lastFetch = Date.now();
     renderAll();
     if (manual) toast('数据已刷新 ✨');
@@ -153,6 +185,7 @@ function renderChips() {
   const counts = CATEGORIES.map(c => ({ ...c, n: state.items.filter(i => i.cat === c.id && !i.missing).length }));
   const all = [{ id: 'all', name: '全部', icon: '🗂️', n: state.items.filter(i => !i.missing).length }, ...counts];
   for (const c of all) {
+    if (c.id === 'fresh' && c.n === 0) continue; // 没有新面孔时不占位
     const btn = document.createElement('button');
     btn.className = 'chip' + (state.category === c.id ? ' active' : '');
     btn.setAttribute('role', 'tab');
@@ -242,7 +275,9 @@ function buildCard(item, rank = 0) {
   actions.append(copyBtn, link);
   foot.append(tag, actions);
 
-  card.append(head, note, desc, stats, foot);
+  card.appendChild(head);
+  if (item.note) card.appendChild(note); // 新鲜上架的扩展没有推荐理由，不渲染空行
+  card.append(desc, stats, foot);
   return card;
 }
 

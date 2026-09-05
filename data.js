@@ -1,6 +1,7 @@
 // 精选扩展目录：id 为官方市场唯一标识（publisher.name），note 为推荐理由
 const CATEGORIES = [
   { id: 'new',      name: '新锐精选', icon: '🆕' },
+  { id: 'fresh',    name: '新鲜上架', icon: '🌱' }, // 无静态条目，由实时查询填充
   { id: 'lang',     name: '语言支持', icon: '🧩' },
   { id: 'quality',  name: '代码质量', icon: '✨' },
   { id: 'git',      name: 'Git 协作', icon: '🌿' },
