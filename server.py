@@ -52,6 +52,11 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
+    def end_headers(self):
+        # 小站文件极小，一律要求重校验，避免部署后浏览器拿旧缓存混出新旧不配套
+        self.send_header("Cache-Control", "no-cache")
+        super().end_headers()
+
     def log_message(self, *args):  # 保持终端安静
         pass
 
