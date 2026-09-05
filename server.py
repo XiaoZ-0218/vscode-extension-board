@@ -53,8 +53,9 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(payload)
 
     def end_headers(self):
-        # 小站文件极小，一律要求重校验，避免部署后浏览器拿旧缓存混出新旧不配套
-        self.send_header("Cache-Control", "no-cache")
+        # 源站禁止缓存；CDN-Cache-Control 拦住 Cloudflare 给 .js 擅自加 max-age=14400
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+        self.send_header("CDN-Cache-Control", "no-store")
         super().end_headers()
 
     def log_message(self, *args):  # 保持终端安静
