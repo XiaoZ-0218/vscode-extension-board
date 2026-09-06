@@ -1,0 +1,19 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Python syntax
+        run: python3 -m py_compile server.py tests/test_server.py
+      - name: Run server tests
+        run: python3 -m unittest -v tests/test_server.py
+      - name: Check JavaScript syntax
+        run: node --check app.js && node --check data.js
+      - name: Validate Compose configuration
+        run: docker compose config -q

@@ -1,7 +1,7 @@
-# NAS 部署：仓库根目录直接 compose up -d，更新用 git pull && docker compose restart
+# NAS 部署：仓库根目录直接 compose up -d，更新用 git pull && docker compose up -d --force-recreate
 services:
   board:
-    image: docker.1ms.run/python:3.12-alpine   # 走镜像加速；网络通畅可换成 python:3.12-alpine
+    image: python:3.12-alpine
     container_name: vscode-board
     working_dir: /app
     volumes:
@@ -11,4 +11,10 @@ services:
     command: ["python3", "server.py", "8137"]
     ports:
       - "8137:8137"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8137/healthz', timeout=2)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     restart: unless-stopped

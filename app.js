@@ -1,7 +1,6 @@
 'use strict';
 
 /* VS Code 扩展看板 —— 官方市场 API 实时数据 + 自动刷新 */
-const API_URL = 'https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery?api-version=7.1-preview.1';
 const MARKET_URL = id => `https://marketplace.visualstudio.com/items?itemName=${id}`;
 
 const state = {
@@ -10,6 +9,8 @@ const state = {
   query: '',
   sort: 'installs',
   lastFetch: 0,
+  lastError: '',
+  freshError: false,
   loading: false,
   refreshTimer: null,
 };
@@ -20,21 +21,22 @@ const grid = $('#grid'), chipsEl = $('#chips'), toastEl = $('#toast');
 /* ── 数据获取 ─────────────────────────────── */
 // 优先走 server.py 同源代理（换常规 UA，绕过市场对 Electron UA 的 403 封锁）；
 // 若页面由纯静态服务器托管（无 /api 代理），回退到浏览器直连市场 API。
+function parseMarketResponse(data) {
+  const extensions = data?.results?.[0]?.extensions;
+  if (!Array.isArray(extensions)) throw new Error('市场返回数据格式异常');
+  return extensions;
+}
+
 async function postQuery(body) {
-  const init = {
+  const res = await fetch('/api/extensionquery', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json;api-version=7.1-preview.1' },
     body: JSON.stringify(body),
-  };
-  try {
-    const res = await fetch('/api/extensionquery', init);
-    if (!res.ok) throw new Error(`proxy HTTP ${res.status}`);
-    return await res.json();
-  } catch {
-    const res = await fetch(API_URL, init);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
-  }
+  });
+  let data;
+  try { data = await res.json(); } catch { throw new Error(`代理 HTTP ${res.status}`); }
+  if (!res.ok) throw new Error(data.error || `代理 HTTP ${res.status}`);
+  return data;
 }
 
 async function queryMarket() {
@@ -48,7 +50,7 @@ async function queryMarket() {
     }],
     flags: 914, // 含统计信息 + 文件清单（图标）
   })));
-  return { results: [{ extensions: parts.flatMap(p => p.results[0].extensions) }] };
+  return { results: [{ extensions: parts.flatMap(parseMarketResponse) }] };
 }
 
 // 市场返回的扩展对象 → 卡片数据（主榜单与新鲜上架共用）
@@ -84,14 +86,15 @@ async function fetchFresh() {
     });
     const known = new Set(CATALOG.map(c => c.id.toLowerCase()));
     const cutoff = Date.now() - 45 * 864e5;
-    return (data.results?.[0]?.extensions || [])
+    return parseMarketResponse(data)
       .map(mapExt)
       .filter(e => Date.parse(e.published) > cutoff && !known.has(e.id.toLowerCase()))
       .sort((a, b) => b.installs - a.installs) // 新苗里安装量最高的浮上来
       .slice(0, 12)
       .map(e => ({ ...e, cat: 'fresh', note: '' }));
   } catch {
-    return []; // 拉不到也不拖累主榜单
+    state.freshError = true;
+    return [];
   }
 }
 
@@ -100,9 +103,10 @@ async function fetchStats(manual = false) {
   state.loading = true;
   $('#refreshBtn').classList.add('spinning');
   try {
+    state.freshError = false;
     const [data, fresh] = await Promise.all([queryMarket(), fetchFresh()]);
     const byId = new Map();
-    for (const ext of data.results[0].extensions) {
+    for (const ext of parseMarketResponse(data)) {
       byId.set(`${ext.publisher.publisherName}.${ext.extensionName}`.toLowerCase(), ext);
     }
     state.items = [
@@ -114,13 +118,16 @@ async function fetchStats(manual = false) {
       ...fresh,
     ];
     state.lastFetch = Date.now();
+    state.lastError = '';
     renderAll();
-    if (manual) toast('数据已刷新 ✨');
+    if (manual) toast(state.freshError ? '主榜单已刷新，新鲜上架暂不可用' : '数据已刷新 ✨');
     const missing = state.items.filter(i => i.missing);
     if (missing.length) console.warn('未在市场找到:', missing.map(i => i.id));
   } catch (err) {
     console.error(err);
-    toast(`刷新失败：${err.message}，将按计划重试`, true);
+    state.lastError = err.message;
+    renderAll();
+    toast(`刷新失败：${err.message}，保留现有数据`, true);
   } finally {
     state.loading = false;
     $('#refreshBtn').classList.remove('spinning');
@@ -182,14 +189,16 @@ function filtered() {
 
 function renderChips() {
   chipsEl.textContent = '';
-  const counts = CATEGORIES.map(c => ({ ...c, n: state.items.filter(i => i.cat === c.id && !i.missing).length }));
+  const counts = CATEGORIES.map(c => ({ ...c, n: state.items.filter(i => i.cat === c.id && !i.missing).length, freshError: c.id === 'fresh' && state.freshError }));
   const all = [{ id: 'all', name: '全部', icon: '🗂️', n: state.items.filter(i => !i.missing).length }, ...counts];
   for (const c of all) {
-    if (c.id === 'fresh' && c.n === 0) continue; // 没有新面孔时不占位
+    if (c.id === 'fresh' && c.n === 0 && !state.freshError) continue; // 没有新面孔时不占位
     const btn = document.createElement('button');
     btn.className = 'chip' + (state.category === c.id ? ' active' : '');
     btn.setAttribute('role', 'tab');
-    btn.innerHTML = `<span class="chip-icon">${c.icon}</span>${c.name}<span class="chip-count">${c.n}</span>`;
+    btn.setAttribute('aria-selected', String(state.category === c.id));
+    btn.title = c.freshError ? '新鲜上架暂时无法加载' : `${c.n} 个扩展`;
+    btn.innerHTML = `<span class="chip-icon">${c.icon}</span>${c.name}<span class="chip-count">${c.freshError ? '不可用' : c.n}</span>`;
     btn.addEventListener('click', () => { state.category = c.id; renderAll(); });
     chipsEl.appendChild(btn);
   }
@@ -296,7 +305,35 @@ function renderCards() {
 
 /* ── 🎲 惊喜三连：只从惊喜池随机抽 3 个 ────── */
 const surpriseModal = $('#surpriseModal'), surpriseGrid = $('#surpriseGrid');
+const surpriseBtn = $('#surpriseBtn'), surpriseClose = $('#surpriseClose');
+let modalReturnFocus;
 const WOW = new Set(WOW_POOL.map(s => s.toLowerCase()));
+
+function updateLiveStatus() {
+  const label = $('#liveLabel');
+  const badge = $('#liveBadge');
+  if (state.lastError) {
+    label.textContent = state.lastFetch ? `显示旧数据 · ${fmtUpdated(new Date(state.lastFetch).toISOString())}` : '数据加载失败';
+    badge.classList.add('stale');
+  } else {
+    label.textContent = state.lastFetch ? `实时数据 · ${fmtUpdated(new Date(state.lastFetch).toISOString())}` : '加载中…';
+    badge.classList.remove('stale');
+  }
+}
+
+function closeSurprise() {
+  surpriseModal.hidden = true;
+  surpriseModal.setAttribute('aria-hidden', 'true');
+  modalReturnFocus?.focus();
+}
+
+function openSurprise() {
+  modalReturnFocus = document.activeElement;
+  surpriseModal.hidden = false;
+  surpriseModal.setAttribute('aria-hidden', 'false');
+  rollSurprise();
+  surpriseClose.focus();
+}
 
 function rollSurprise() {
   const pool = state.items.filter(i => WOW.has(i.id.toLowerCase()) && !i.missing);
@@ -314,10 +351,10 @@ function rollSurprise() {
   });
 }
 
-$('#surpriseBtn').addEventListener('click', () => { surpriseModal.hidden = false; rollSurprise(); });
+surpriseBtn.addEventListener('click', openSurprise);
 $('#rerollBtn').addEventListener('click', rollSurprise);
-$('#surpriseClose').addEventListener('click', () => { surpriseModal.hidden = true; });
-surpriseModal.addEventListener('click', e => { if (e.target === surpriseModal) surpriseModal.hidden = true; });
+surpriseClose.addEventListener('click', closeSurprise);
+surpriseModal.addEventListener('click', e => { if (e.target === surpriseModal) closeSurprise(); });
 
 function renderSkeleton() {
   grid.textContent = '';
@@ -330,7 +367,7 @@ function renderSkeleton() {
   grid.appendChild(frag);
 }
 
-function renderAll() { renderChips(); renderCards(); }
+function renderAll() { renderChips(); renderCards(); updateLiveStatus(); }
 
 /* ── 交互 ─────────────────────────────────── */
 let toastTimer;
@@ -349,7 +386,7 @@ $('#clearFilterBtn').addEventListener('click', () => {
 });
 document.addEventListener('keydown', e => {
   if (e.key === '/' && document.activeElement !== $('#searchInput')) { e.preventDefault(); $('#searchInput').focus(); }
-  if (e.key === 'Escape' && !surpriseModal.hidden) surpriseModal.hidden = true;
+  if (e.key === 'Escape' && !surpriseModal.hidden) closeSurprise();
 });
 
 /* ── 启动 ─────────────────────────────────── */
