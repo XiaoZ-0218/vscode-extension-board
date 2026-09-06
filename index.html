@@ -22,7 +22,7 @@
         </div>
       </div>
       <div class="refresh-panel">
-        <div class="live-badge" id="liveBadge"><span class="live-dot"></span>实时数据</div>
+        <div class="live-badge" id="liveBadge" role="status"><span class="live-dot"></span><span id="liveLabel">实时数据</span></div>
         <span class="refresh-schedule">每天 02:00 自动刷新</span>
         <button id="refreshBtn" class="refresh-btn" title="立即刷新">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
@@ -65,11 +65,11 @@
     <p>数据来源：<a href="https://marketplace.visualstudio.com/vscode" target="_blank" rel="noopener">Visual Studio Marketplace</a>（官方 API 实时查询） · 页面后台标签页自动暂停刷新</p>
   </footer>
 
-  <div class="modal-overlay" id="surpriseModal" hidden>
+  <div class="modal-overlay" id="surpriseModal" hidden aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-label="随机扩展推荐">
       <div class="modal-head">
         <h2>🎁 惊喜三连</h2>
-        <button class="modal-close" id="surpriseClose" title="关闭 (Esc)">✕</button>
+        <button class="modal-close" id="surpriseClose" title="关闭 (Esc)" aria-label="关闭弹窗">✕</button>
       </div>
       <p class="modal-sub">不走寻常路的宝藏扩展，随机 3 枚 · 绝不出现老生常谈</p>
       <div class="modal-grid" id="surpriseGrid"></div>

@@ -93,6 +93,8 @@ body {
   background: var(--green);
   animation: pulse 1.8s ease-in-out infinite;
 }
+.live-badge.stale { border-color: rgba(245, 197, 24, .4); background: rgba(245, 197, 24, .08); color: var(--gold); }
+.live-badge.stale .live-dot { background: var(--gold); animation: none; }
 
 @keyframes pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(63, 185, 80, .5); }
